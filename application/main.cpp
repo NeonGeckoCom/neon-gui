@@ -27,6 +27,10 @@
 
 #ifdef Q_OS_ANDROID
 #include <QGuiApplication>
+#include <QtAndroid>
+#define FLAG_TRANSLUCENT_STATUS 0x04000000
+#define FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS 0x80000000
+#include "keyfilter.h"
 #else
 #include <QApplication>
 #include <KDBusService>
@@ -71,6 +75,11 @@ int main(int argc, char *argv[])
     app.setApplicationName(QStringLiteral("mycroft.gui"));
     app.setOrganizationDomain(QStringLiteral("kde.org"));
     app.setWindowIcon(QIcon::fromTheme(QStringLiteral("mycroft")));
+    
+#ifdef Q_OS_ANDROID
+    KeyFilter *kf = new KeyFilter;
+    app.installEventFilter(kf);
+#endif
 
     // NOTE: Have to manually implement a --help option because the parser.addHelpOption() would
     //       be triggered at parser.process() time, but it requires the QApplication. But the
@@ -95,6 +104,12 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("deviceMaximized"), maximize);
     engine.rootContext()->setContextProperty(QStringLiteral("hideTextInput"), parser.isSet(hideTextInputOption));
     engine.rootContext()->setContextProperty(QStringLiteral("globalScreenRotation"), parser.isSet(rotateScreen) ? rotation : 0);
+    
+#ifdef Q_OS_ANDROID
+    engine.rootContext()->setContextProperty(QStringLiteral("keyFilter"), kf);
+#else
+    engine.rootContext()->setContextProperty(QStringLiteral("keyFilter"), 0);
+#endif
 
     QString singleSkill = parser.value(skillOption);
     if (singleSkill.endsWith(QStringLiteral(".home"))) {
@@ -120,5 +135,15 @@ int main(int argc, char *argv[])
 
     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
 
+#ifdef Q_OS_ANDROID
+    QtAndroid::runOnAndroidThread([=]() {
+        QAndroidJniObject window = QtAndroid::androidActivity().callObjectMethod("getWindow", "()Landroid/view/Window;");
+        window.callMethod<void>("addFlags", "(I)V", FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+        window.callMethod<void>("clearFlags", "(I)V", FLAG_TRANSLUCENT_STATUS);
+        window.callMethod<void>("setStatusBarColor", "(I)V", QColor("#303030").rgba());
+        window.callMethod<void>("setNavigationBarColor", "(I)V", QColor("#303030").rgba());
+    });
+#endif
+    
     return app.exec();
 }
