@@ -24,6 +24,7 @@ import org.kde.kirigami 2.4 as Kirigami
 import QtQuick.Window 2.2
 import Mycroft 1.0 as Mycroft
 import org.kde.private.mycroftgui 1.0 as MycroftGui
+import QtQuick.Controls.Material 2.0
 
 Kirigami.ApplicationWindow {
     id: root
@@ -62,7 +63,21 @@ Kirigami.ApplicationWindow {
                 Mycroft.MycroftController.sendRequest(singleSkillHome, {});
             }
         }
+        
+        onSpeechRequestedChanged: {
+            if(expectingResponse) {
+                micButton.clicked()
+            }
+        }
     }
+    
+    Connections {
+        target: keyFilter
+        onGlobalBackReceived: {
+            mainView.currentItem.backRequested()
+        }
+    }
+    
     // Uses Android's voice popup for speech recognition
     MycroftGui.SpeechIntent {
         id: speechIntent
@@ -90,6 +105,8 @@ Kirigami.ApplicationWindow {
     globalDrawer: Kirigami.GlobalDrawer {
         bannerImageSource: "banner.png"
         handleVisible: !hideTextInput
+        Kirigami.Theme.inherit: false
+        Kirigami.Theme.colorSet: applicationSettings.darkMode ? Kirigami.Theme.Complementary : Kirigami.Theme.View
 
         actions: [
             Kirigami.Action {
@@ -136,6 +153,7 @@ Kirigami.ApplicationWindow {
         }
         Switch {
             id: nightSwitch
+            visible: !Kirigami.Settings.isMobile
             text: "Dark Mode"
             checked: applicationSettings.darkMode
             onCheckedChanged: applicationSettings.darkMode = checked
@@ -301,8 +319,19 @@ Kirigami.ApplicationWindow {
                         }
                     }
                 }
-                Button {
-                    text: "Speak" // TODO generic microphone icon
+                
+                ToolButton {
+                    id: micButton
+                    Kirigami.Theme.colorSet: Kirigami.Theme.Button
+                    Layout.preferredWidth: handleAnchor.width
+                    Layout.fillHeight: true
+                    Layout.rightMargin: Kirigami.Units.smallSpacing
+                    
+                    contentItem: Kirigami.Icon {
+                        anchors.centerIn: parent
+                        source: "audio-input-microphone"
+                    }
+                    
                     onClicked:  {
                         if(applicationSettings.usesRemoteSTT){
                             audioRecorder.open()

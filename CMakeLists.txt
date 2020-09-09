@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 2.8.12)
 option(BUILD_REMOTE_TTS "Build remote TTS support" OFF)
 set(QT_MIN_VERSION "5.9.0")
 set(KF5_MIN_VERSION "5.50.0")
- 
+
 PROJECT(mycroft-gui)
 
 # Use Extra CMake Modules (ECM) for common functionality.
@@ -89,7 +89,7 @@ install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/mycroft-gui-core-loader DESTINATION
 configure_file(data/mycroft-gui-core-stop.in ${CMAKE_CURRENT_BINARY_DIR}/mycroft-gui-core-stop)
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/mycroft-gui-core-stop DESTINATION ${KDE_INSTALL_BINDIR})
 
-if (BUILD_TESTING)
+if (BUILD_TESTING AND NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
     add_subdirectory(autotests)
 endif()
 
