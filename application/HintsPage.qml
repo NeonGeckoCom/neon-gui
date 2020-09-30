@@ -17,17 +17,18 @@
  */
 
 import QtQuick 2.9
-import QtQuick.Layouts 1.3
-import QtQuick.Controls 2.2 as Controls
+import QtQuick.Layouts 1.12
+import QtQuick.Controls 2.12 as QQC2
 import org.kde.kirigami 2.4 as Kirigami
 import QtGraphicalEffects 1.0
 import Mycroft 1.0 as Mycroft
 
-Kirigami.ScrollablePage {
+Kirigami.Page {
     title: "Hints"
     objectName: "hints"
     property var modelCreatedObject
-    
+    property var filteredModel
+
     Component.onCompleted: {
         createHintModel()
     }
@@ -38,11 +39,14 @@ Kirigami.ScrollablePage {
         var fileToFind = "README.md"
         var getList = Mycroft.FileReader.checkForMeta(defaultFold, fileToFind)
         for(var i=0; i < getList.length; i++){
-            var fileParse = Mycroft.FileReader.read(getList[i]+"/"+fileToFind);
-            var matchedRegex = getImgSrc(fileParse)
-            var matchedExamples = getExamples(fileParse)
-            var matchedCategory = getCategory(fileParse)
+            var fileName = getList[i] + "/" + fileToFind;
+            var fileParse = Mycroft.FileReader.read(fileName);
+            console.log("Loading hints from", fileName);
+            var matchedRegex = getDataFromRegex(fileName, fileParse, /<img[^>]*src='([^']*)'.*\/>\s(.*)/g)
+            var matchedExamples = getDataFromRegex(fileName, fileParse, /## Examples.*\n.*"(.*)"\n\*\s"(.*)"/g)
+            var matchedCategory = getDataFromRegex(fileName, fileParse, /## Category.*\n\*\*(.*)\*\*/g)
             if(matchedRegex !== null && matchedRegex.length > 0 && matchedExamples !== null && matchedExamples.length > 0 && matchedCategory !== null && matchedCategory.length > 0) {
+                console.log("All good. \n");
                 var metaFileObject = {
                     imgSrc: matchedRegex[1],
                     title: matchedRegex[2],
@@ -53,95 +57,62 @@ Kirigami.ScrollablePage {
             }
         }
         modelCreatedObject = hintList
+        filteredModel = modelCreatedObject
     }
 
-    function getImgSrc(fileText){
-        var re = new RegExp(/<img[^>]*src='([^']*)'.*\/>\s(.*)/g);
+    function getDataFromRegex(fileName, fileText, matchRegex){
+        var re = new RegExp(matchRegex);
         var match = re.exec(fileText);
+        if (match === null || match.length == 0) {
+            console.log("README.md file is not properly defined, it's missing data for the following regex:");
+            console.log(re);
+            console.log("Please fix the README.md file of the skill");
+            console.log("This warning is for skill developers");
+            console.log("if you are not a developer, fill a bug on the corresponding skill.\n");
+        }
         return match;
     }
 
-    function getExamples(fileText){
-        var re = new RegExp(/Examples \n.*"(.*)"\n\*\s"(.*)"/g);
-        var match = re.exec(fileText);
-        return match;
+    function filterModel(text) {
+        var result = []
+        for (var i = 0; i < modelCreatedObject.length; i++) {
+            var obj = modelCreatedObject[i];
+            if (obj.title.toLowerCase().includes(text)
+            || obj.category.toLowerCase().includes(text)
+            || obj.examples[0].toLowerCase().includes(text)
+            || obj.examples[1].toLowerCase().includes(text)) {
+                result.push(obj)
+            }
+        }
+        return result;
     }
 
-    function getCategory(fileText){
-        var re = new RegExp(/## Category\n\*\*(.*)\*\*/g);
-        var match = re.exec(fileText);
-        return match;
-    }
-    
-    Kirigami.CardsListView {
-        id: skillslistmodelview
-        anchors.fill: parent;
-        clip: true;
-        model: modelCreatedObject
-        delegate: Kirigami.AbstractCard {
-            id: skillDelegate;
+    ColumnLayout {
+        anchors.fill: parent
 
-            contentItem: Item {
-                implicitWidth: delegateLayout.implicitWidth;
-                implicitHeight: delegateLayout.implicitHeight;
+        QQC2.TextField {
+            id: filterHints
+            placeholderText: qsTr("Search:")
+            Layout.fillWidth: true
+            onTextChanged: {
+                filteredModel = filterModel(text.toLowerCase())
+            }
+        }
 
-                ColumnLayout {
-                    id: delegateLayout
-                    anchors {
-                        left: parent.left;
-                        top: parent.top;
-                        right: parent.right;
-                    }
+        Kirigami.ScrollablePage {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Kirigami.CardsListView {
+                id: skillslistmodelview
+                clip: true;
+                model: filteredModel
+                anchors.fill: parent
 
-                    Kirigami.Heading {
-                        id: skillName
-                        Layout.fillWidth: true;
-                        wrapMode: Text.WordWrap;
-                        font.bold: true;
-                        text: qsTr(modelData.title);
-                        level: 3;
-                        color: Kirigami.Theme.textColor;
-                    }
-
-                    RowLayout {
-                        id: skillTopRowLayout
-                        spacing: Kirigami.Units.largeSpacing
-                        Layout.fillWidth: true;
-
-                        Image {
-                            id: innerskImg
-                            source: modelData.imgSrc;
-                            fillMode: PreserveAspectFit
-                            Layout.preferredWidth: innerskImg.width
-                            Layout.preferredHeight: innerskImg.height
-                            width: Kirigami.Units.gridUnit * 2
-                            height: Kirigami.Units.gridUnit * 2
-                        }
-                        
-                        ColorOverlay {
-                            id: colorOverlay
-                            anchors.fill: innerskImg
-                            source: innerskImg
-                            color: Kirigami.Theme.linkColor
-                        }
-
-                        ColumnLayout {
-                            id: innerskillscolumn
-                            spacing: 2;
-                            Controls.Label {
-                                wrapMode: Text.WordWrap;
-                                width: skillDelegate.width;
-                                color: Kirigami.Theme.textColor;
-                                text: modelData.examples[1];
-                            }
-                            Controls.Label {
-                                wrapMode: Text.WordWrap;
-                                width: skillDelegate.width;
-                                color: Kirigami.Theme.textColor;
-                                text: modelData.examples[2];
-                            }
-                        }
-                    }
+                delegate: HintsDelegate {
+                    imageSource: modelData.imgSrc
+                    title: modelData.title
+                    examples: modelData.examples
+                    category: modelData.category
                 }
             }
         }

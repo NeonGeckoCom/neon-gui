@@ -2,11 +2,20 @@ PROJECT(mycroft-gui-app)
 
 
 
-SET(mycroft_gui_app_SRC
-    main.cpp
-    appsettings.cpp
-    speechintent.cpp
-)
+if (CMAKE_SYSTEM_NAME STREQUAL "Android")
+    SET(mycroft_gui_app_SRC
+        main.cpp
+        appsettings.cpp
+        speechintent.cpp
+        keyfilter.cpp
+    )
+else()
+    SET(mycroft_gui_app_SRC
+        main.cpp
+        appsettings.cpp
+        speechintent.cpp
+    )
+endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Android")
     set(mycroft_gui_app_EXTRA_LIBS
@@ -16,6 +25,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Android")
         Qt5::Svg
         Qt5::WebSockets
         OpenSSL::SSL
+        Qt5::TextToSpeech
     )
 else()
 set(mycroft_gui_app_EXTRA_LIBS
@@ -37,7 +47,7 @@ install( PROGRAMS ai.mycroft.gui-app.desktop DESTINATION  ${KDE_INSTALL_APPDIR} 
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Android")
     find_package(KF5Kirigami2 REQUIRED)
-    kirigami_package_breeze_icons(ICONS help-hint configure media-playback-pause media-playback-start media-seek-forward media-seek-backward)
+    kirigami_package_breeze_icons(ICONS help-hint configure media-playback-pause media-playback-start media-seek-forward media-seek-backward audio-input-microphone)
 endif()
 
 
