@@ -4,7 +4,7 @@
 set -Ee
 
 # Enter the directory that contains this script file
-cd $(dirname $0)
+cd "$(dirname "$0")"
 TOP=$( pwd -L )
 
 if [ $(id -u) -eq 0 ] ; then
@@ -183,9 +183,18 @@ EOF
     exit 0
 }
 
-while true
-do
-
-	show_menus
-	read_options
-done
+case ${1} in
+    1) neon ;;
+    2) kubuntu ;;
+    3) manjaro ;;
+    4) others ;;
+    5) updateinstall;;
+    6) exit 0;;
+    *) # Default Behavior (show menu)
+        while true
+        do
+            show_menus
+            read_options
+        done
+    ;;
+esac
